@@ -158,9 +158,16 @@ function doPost(e) {
   }
 
   try {
+    // Dua bentuk kiriman yang diterima:
+    //  1. badan JSON mentah      - dipakai fetch() dari halaman
+    //  2. field form "payload"   - dipakai jalur cadangan (form + iframe)
+    //     saat fetch diblokir CORS di perangkat PJ
     var body = {};
     if (e && e.postData && e.postData.contents) {
-      body = JSON.parse(e.postData.contents);
+      try { body = JSON.parse(e.postData.contents); } catch (abai) { body = {}; }
+    }
+    if (!body.sesi && e && e.parameter && e.parameter.payload) {
+      try { body = JSON.parse(e.parameter.payload); } catch (abai2) { body = {}; }
     }
     if ((body.aksi || 'simpan') !== 'simpan') {
       return balas_({ ok: false, pesan: 'Aksi tidak dikenal.' }, e);

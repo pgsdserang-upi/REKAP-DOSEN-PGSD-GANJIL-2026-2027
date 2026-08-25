@@ -308,7 +308,8 @@
       terkirim = true;
       pesan('✔ Tersimpan. <b>' + j.tersimpan + ' pertemuan</b> untuk ' +
             esc(sesiAktif.mk) + ' kelas ' + esc(sesiAktif.kelas) +
-            ' sudah masuk rekapan pengelola.', 'ok');
+            ' sudah masuk rekapan pengelola.' +
+            (j.lewatCadangan ? ' <small>(terkirim lewat jalur cadangan)</small>' : ''), 'ok');
       simpanDraf();
     }).catch(function (err) {
       pesan('Gagal mengirim: ' + esc(err.message) +

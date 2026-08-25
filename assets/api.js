@@ -49,8 +49,90 @@
         throw new Error('Jawaban server tidak dikenali. Pastikan Web App ' +
                         'dipasang dengan akses "Anyone".');
       }
-      if (!j.ok) throw new Error(j.pesan || 'Server menolak permintaan.');
+      if (!j.ok) {
+        // penolakan sah dari skrip (mis. nama PJ kosong) - jangan diulang
+        var tolak = new Error(j.pesan || 'Server menolak permintaan.');
+        tolak.dariServer = true;
+        throw tolak;
+      }
       return j;
+    }).catch(function (err) {
+      if (err && err.dariServer) throw err;
+      // fetch gagal di tingkat jaringan/CORS - tempuh jalur cadangan
+      return kirimLewatForm(data);
+    });
+  }
+
+  /* --- Jalur cadangan tanpa CORS ---------------------------------------
+     Sebagian peramban dan jaringan memblokir fetch lintas-origin ke
+     script.google.com. Pengiriman lewat <form> yang menyasar iframe
+     tersembunyi tidak tunduk pada CORS karena dihitung sebagai navigasi.
+     Jawabannya tidak bisa dibaca, jadi keberhasilan dipastikan dengan
+     membaca ulang sesi tersebut (yang punya cadangan JSONP). */
+  function kirimLewatForm(data) {
+    return new Promise(function (selesai, gagal) {
+      var nama = '__kirim' + Date.now();
+
+      var bingkai = document.createElement('iframe');
+      bingkai.name = nama;
+      bingkai.setAttribute('aria-hidden', 'true');
+      bingkai.setAttribute('tabindex', '-1');
+      bingkai.style.cssText = 'position:absolute;left:-9999px;width:0;height:0;border:0';
+      document.body.appendChild(bingkai);
+
+      var borang = document.createElement('form');
+      borang.method = 'POST';
+      borang.action = endpoint();
+      borang.target = nama;
+      borang.style.display = 'none';
+      var isian = document.createElement('input');
+      isian.type = 'hidden';
+      isian.name = 'payload';
+      isian.value = JSON.stringify(data);
+      borang.appendChild(isian);
+      document.body.appendChild(borang);
+      borang.submit();
+
+      var idSesi = (data.sesi && data.sesi.id) || '';
+      var target = (data.isi || []).length;
+
+      function bersihkan() {
+        if (borang.parentNode) borang.parentNode.removeChild(borang);
+        if (bingkai.parentNode) bingkai.parentNode.removeChild(bingkai);
+      }
+
+      // Apps Script bisa lambat saat pertama dibangunkan, jadi diperiksa
+      // beberapa kali sebelum dinyatakan gagal.
+      var sisaCoba = 4;
+
+      function periksa() {
+        if (!idSesi) {
+          bersihkan();
+          selesai({ ok: true, tersimpan: target, lewatCadangan: true });
+          return;
+        }
+        ambil({ aksi: 'sesi', id: idSesi }).then(function (j) {
+          var n = (j.data || []).length;
+          if (n >= target) {
+            bersihkan();
+            selesai({ ok: true, tersimpan: n, lewatCadangan: true });
+          } else {
+            ulangi();
+          }
+        }).catch(ulangi);
+      }
+
+      function ulangi() {
+        if (--sisaCoba > 0) {
+          setTimeout(periksa, 3000);
+        } else {
+          bersihkan();
+          gagal(new Error('Pengiriman tidak dapat dipastikan. Periksa sambungan ' +
+                          'internet Anda, lalu tekan Kirim sekali lagi.'));
+        }
+      }
+
+      setTimeout(periksa, 3000);
     });
   }
 
