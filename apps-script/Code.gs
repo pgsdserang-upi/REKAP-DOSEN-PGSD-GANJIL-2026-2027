@@ -12,31 +12,31 @@
 // PENGATURAN - ubah bagian ini
 // ============================================================================
 
-/**
- * Kunci admin untuk membuka halaman rekap.
- *
- * CARA AMAN (dianjurkan bila repositori GitHub Anda bersifat Public):
- *   jangan tulis kunci asli di sini. Simpan lewat
- *   Apps Script > Project Settings > Script properties > Add script property
- *   dengan Property = KUNCI_ADMIN dan Value = kunci rahasia Anda.
- *   Nilai dari Script properties selalu menang atas nilai di bawah ini.
- *
- * Nilai di bawah hanya dipakai bila Script properties belum diisi. Apa pun
- * yang tertulis di sini ikut terbaca publik kalau berkas ini di-commit.
- */
-var KUNCI_ADMIN = 'pgsd-unggul-2026';
-
 /** Nama tab tempat data disimpan. Dibuat otomatis bila belum ada. */
 var NAMA_SHEET = 'Ceklis';
 
+/**
+ * Kunci admin untuk membuka dan menghapus rekapan.
+ *
+ * Kunci TIDAK disimpan di dalam berkas ini dengan sengaja: berkas ini ada di
+ * repositori GitHub yang publik, sehingga apa pun yang tertulis di sini ikut
+ * terbaca siapa saja. Simpanlah lewat
+ *
+ *   Apps Script > Project Settings (roda gigi) > Script properties
+ *   > Add script property
+ *       Property : KUNCI_ADMIN
+ *       Value    : kunci rahasia Anda
+ *
+ * Selama properti itu belum diisi, rekapan tidak bisa dibuka sama sekali.
+ */
 function kunciAdmin_() {
-  var p = '';
   try {
-    p = PropertiesService.getScriptProperties().getProperty('KUNCI_ADMIN') || '';
+    return String(
+      PropertiesService.getScriptProperties().getProperty('KUNCI_ADMIN') || ''
+    ).trim();
   } catch (e) {
-    p = '';
+    return '';
   }
-  return p ? String(p).trim() : KUNCI_ADMIN;
 }
 
 // ============================================================================
@@ -125,7 +125,12 @@ function doGet(e) {
     }
 
     if (aksi === 'rekap') {
-      if (str_(p.kunci) !== kunciAdmin_()) {
+      var kunci = kunciAdmin_();
+      if (!kunci) {
+        return balas_({ ok: false, pesan: 'Kunci admin belum dipasang. Isi Script ' +
+                        'property bernama KUNCI_ADMIN pada Apps Script.' }, e);
+      }
+      if (str_(p.kunci) !== kunci) {
         return balas_({ ok: false, pesan: 'Kunci admin salah.' }, e);
       }
       var semua = baca_(null);
@@ -274,7 +279,12 @@ function doPost(e) {
  * Baris warisan yang ID-nya terlanjur menjadi tanggal ikut dibuang.
  */
 function hapus_(body, e) {
-  if (str_(body.kunci) !== kunciAdmin_()) {
+  var kunci = kunciAdmin_();
+  if (!kunci) {
+    return balas_({ ok: false, pesan: 'Kunci admin belum dipasang. Isi Script ' +
+                    'property bernama KUNCI_ADMIN pada Apps Script.' }, e);
+  }
+  if (str_(body.kunci) !== kunci) {
     return balas_({ ok: false, pesan: 'Kunci admin salah.' }, e);
   }
 

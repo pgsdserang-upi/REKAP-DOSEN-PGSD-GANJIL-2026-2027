@@ -25,33 +25,30 @@ otomatis saat data pertama masuk.
    lalu tempelkan ke sana.
 4. Simpan (ikon disket atau `Ctrl+S`).
 
-## 2b. Pasang kunci admin
+## 2b. Pasang kunci admin (WAJIB)
 
-Kunci admin adalah kata sandi untuk membuka halaman **Rekapan Pengelola**.
-Jangan dibagikan kepada PJ.
+Kunci admin adalah kata sandi untuk membuka dan menghapus rekapan. Jangan
+dibagikan kepada PJ.
 
-> **Penting bila repositori GitHub Anda Public.** Isi `apps-script/Code.gs` ikut
-> terbaca siapa saja. Kunci yang diketik langsung ke dalam kode lalu di-commit
-> otomatis menjadi publik. Karena itu simpan kunci aslinya lewat **Script
-> properties**, bukan di dalam kode.
+Kunci **tidak disimpan di dalam kode** dengan sengaja: `Code.gs` berada di
+repositori GitHub yang publik, jadi apa pun yang ditulis di sana ikut terbaca
+siapa saja. Selama langkah ini belum dikerjakan, halaman rekap tidak bisa
+dibuka sama sekali.
 
-1. Di editor Apps Script: **Project Settings** (ikon roda gigi kiri) →
+1. Di editor Apps Script: **Project Settings** (ikon roda gigi di kiri) →
    gulir ke **Script properties** → **Add script property**.
-2. Isi:
-   - **Property**: `KUNCI_ADMIN`
-   - **Value**: kunci rahasia Anda, contoh `pgsd-serang-ganjil-8842`
+2. Isi dua kolomnya — perhatikan mana yang mana:
+
+   | Kolom | Isi |
+   |---|---|
+   | **Property** | `KUNCI_ADMIN` (nama properti, harus persis begini) |
+   | **Value** | kunci rahasia Anda, misalnya `pgsd-serang-ganjil-8842` |
+
 3. **Save script properties**.
 
-Nilai ini selalu menang atas nilai `var KUNCI_ADMIN` di dalam kode, dan tidak
-pernah ikut ke GitHub.
-
-Kalau repositori Anda **Private**, boleh saja langsung mengubah baris
-
-```javascript
-var KUNCI_ADMIN = 'ganti-kunci-ini-2026';
-```
-
-di dalam kode dan melewati langkah Script properties.
+Kunci ini dibaca saat skrip berjalan, jadi mengubahnya **tidak** perlu deploy
+ulang — berlaku seketika. Itu juga yang membuatnya mudah diganti bila suatu
+saat bocor.
 
 ## 3. Pasang sebagai Web App
 
