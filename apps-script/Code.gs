@@ -67,6 +67,25 @@ function sheet_() {
   return sh;
 }
 
+/**
+ * Mengunci tipe tiap kolom sebelum data ditulis.
+ *
+ * Kolom A  (Waktu Input) = tanggal-waktu
+ * Kolom M  (Pertemuan)   = bilangan bulat
+ * Sisanya                = teks apa adanya ('@')
+ *
+ * Kolom teks WAJIB dipaksa '@'. Nilai seperti ID sesi "2267-1", kelas
+ * "2026-A", atau NIM berawalan nol akan diubah sendiri oleh Google Sheets
+ * bila dibiarkan bertipe otomatis.
+ */
+function formatKolom_(sh, jml) {
+  if (jml < 1) return;
+  sh.getRange(2, 2, jml, 11).setNumberFormat('@');   // B..L
+  sh.getRange(2, 14, jml, 3).setNumberFormat('@');   // N..P
+  sh.getRange(2, 1, jml, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  sh.getRange(2, 13, jml, 1).setNumberFormat('0');
+}
+
 function balas_(obj, e) {
   var teks = JSON.stringify(obj);
   var cb = e && e.parameter && e.parameter.callback;
@@ -128,6 +147,9 @@ function baca_(idSesi) {
   var out = [];
   for (var r = 0; r < nilai.length; r++) {
     var b = nilai[r];
+    // Baris warisan versi lama: ID sesi sempat diubah Sheets menjadi tanggal
+    // sehingga tidak bisa dicocokkan lagi dengan jadwal. Diabaikan.
+    if (b[KOL_ID] instanceof Date) continue;
     if (!str_(b[KOL_ID])) continue;
     if (idSesi && str_(b[KOL_ID]) !== idSesi) continue;
     out.push({
@@ -203,6 +225,7 @@ function doPost(e) {
     if (n > 1) {
       var nilai = sh.getRange(2, 1, n - 1, JUDUL.length).getValues();
       for (var r = 0; r < nilai.length; r++) {
+        if (nilai[r][KOL_ID] instanceof Date) continue;    // baris rusak, dibuang
         if (!str_(nilai[r][KOL_ID])) continue;
         if (str_(nilai[r][KOL_ID]) === idSesi) continue;   // diganti data baru
         sisa.push(nilai[r]);
@@ -221,8 +244,11 @@ function doPost(e) {
 
     if (n > 1) sh.getRange(2, 1, n - 1, JUDUL.length).clearContent();
     if (gabung.length) {
+      // Format dipasang SEBELUM menulis. Tanpa ini Google Sheets menafsirkan
+      // ID sesi "2267-1" sebagai tanggal (Januari 2267), sehingga ID di Sheet
+      // tidak lagi cocok dengan ID di jadwal dan rekapan jadi kosong.
+      formatKolom_(sh, gabung.length);
       sh.getRange(2, 1, gabung.length, JUDUL.length).setValues(gabung);
-      sh.getRange(2, 1, gabung.length, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
     }
 
     return balas_({ ok: true, idSesi: idSesi, tersimpan: tambah.length,
