@@ -14,7 +14,7 @@
 window.KONFIG = {
 
   /* WAJIB: alamat Web App Apps Script (harus berakhiran /exec) */
-  endpoint: 'https://script.google.com/macros/s/AKfycbwoeN5CayCgI7xEI6zrynqNKP6PsUZhcKtaMwM7IvEc6zRykzpmIvJm4IwSflbJ1uRC/exec',
+  endpoint: 'https://script.google.com/macros/s/AKfycbwSdHQAD3Lqfo6CSvSHiil-8XO_9Axf87-fa5KGBHyFuaAqK_D4RLyjfAJ_l5KIArAe/exec',
 
   /* Judul yang tampil di kepala halaman */
   prodi: 'Program Studi Pendidikan Guru Sekolah Dasar (K0651)',
