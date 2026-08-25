@@ -356,6 +356,21 @@ REKAP_ISI = """
           <button type="button" class="btn" id="tombolCsv">Unduh CSV</button>
           <button type="button" class="btn" id="tombolJson">Unduh JSON</button>
           <button type="button" class="btn" id="tombolCetak">Cetak / PDF</button>
+          <button type="button" class="btn bahaya" id="tombolKosongkan">Kosongkan semua data</button>
+        </div>
+
+        <div class="pesan salah tanpa-cetak sembunyi" id="panelKosongkan">
+          <p style="margin:0 0 8px"><b>Hapus seluruh ceklis dari semua PJ?</b>
+          Tindakan ini tidak bisa dibatalkan. Sebaiknya tekan <b>Unduh JSON</b>
+          lebih dahulu sebagai cadangan.</p>
+          <div class="alat" style="align-items:center">
+            <div class="bidang" style="flex:0 1 220px">
+              <label for="konfirmKosongkan">Ketik <code>HAPUS SEMUA</code> untuk menegaskan</label>
+              <input type="text" id="konfirmKosongkan" autocomplete="off" placeholder="HAPUS SEMUA">
+            </div>
+            <button type="button" class="btn bahaya" id="tombolKosongkanYa" disabled>Ya, hapus semuanya</button>
+            <button type="button" class="btn" id="tombolKosongkanBatal">Batal</button>
+          </div>
         </div>
         <p class="bantuan" style="margin:0 0 8px">
           <span class="sel sel-hadir" style="padding:1px 6px;border-radius:4px">&#10004;</span> terlaksana &nbsp;

@@ -44,6 +44,7 @@
   var laporan = {};      // idSesi -> { pertemuan -> baris }
   var mentah = [];       // seluruh baris dari server
   var diperbarui = '';
+  var kunciTerpakai = '';   // kunci admin yang terbukti diterima server
 
   /* ---------- memuat ----------------------------------------------------- */
 
@@ -54,7 +55,8 @@
     el.innerHTML = teks;
   }
 
-  function muat() {
+  function muat(catatan) {
+    if (typeof catatan !== 'string') catatan = '';
     var kunci = $('#kunciAdmin').value.trim();
     if (!kunci) { pesan('Masukkan kunci admin terlebih dahulu.', 'salah'); return; }
     if (!window.API || !API.aktif()) {
@@ -74,9 +76,11 @@
     pesan('Menarik data dari Google Sheet…', 'info');
 
     API.ambil({ aksi: 'rekap', kunci: kunci }).then(function (j) {
+      kunciTerpakai = kunci;
       terapkan(j.data || []);
       diperbarui = j.diperbarui || new Date().toISOString();
-      pesan('✔ Data dimuat: <b>' + (j.jumlah || 0) + ' baris ceklis</b> · ' +
+      pesan((catatan ? '✔ ' + esc(catatan) + ' ' : '✔ ') +
+            'Data dimuat: <b>' + (j.jumlah || 0) + ' baris ceklis</b> · ' +
             'per ' + waktuLokal(diperbarui), 'ok');
     }).catch(function (err) {
       pesan('Gagal memuat: ' + esc(err.message), 'salah');
@@ -163,7 +167,7 @@
   function gambarTabel() {
     var kepala = '<tr><th class="c">NO</th><th>DOSEN</th><th>MATA KULIAH</th>' +
                  '<th class="c">KELAS</th><th>HARI / JAM</th><th>PJ PENGISI</th>' +
-                 '<th class="c">ISI</th>';
+                 '<th class="c">ISI</th><th class="c tanpa-cetak">HAPUS</th>';
     for (var p = 1; p <= JML; p++) kepala += '<th class="kol-p"><span>' + p + '</span></th>';
     kepala += '</tr>';
 
@@ -197,6 +201,10 @@
              '<td class="nowrap">' + esc(s.hari) + '<br><small>' + esc(s.jam) + '</small></td>' +
              '<td>' + (namaPj ? esc(namaPj) : '<small style="color:#b3bac7">belum ada</small>') + '</td>' +
              '<td class="c"><b>' + terisi + '</b>/' + JML + '</td>' +
+             '<td class="c tanpa-cetak">' + (terisi
+               ? '<button type="button" class="btn kecil bahaya hapus-sesi" data-id="' +
+                 esc(s.id) + '" title="Hapus seluruh ceklis kelas ini">Hapus</button>'
+               : '') + '</td>' +
              sel + '</tr>';
     }).join('');
 
@@ -295,6 +303,70 @@
       }).join('') + '</tbody></table></div>';
   }
 
+  /* ---------- menghapus ceklis (khusus pengelola) ------------------------- */
+
+  function balikkanTombol(b) {
+    if (b.__jam) { clearTimeout(b.__jam); b.__jam = null; }
+    b.setAttribute('data-siap', '');
+    b.textContent = 'Hapus';
+    b.classList.remove('tegas');
+  }
+
+  /* Penegasan dua langkah, bukan dialog confirm(): klik pertama mengubah
+     tombol menjadi "Yakin?" selama 5 detik, klik kedua baru menghapus. */
+  function klikHapusBaris(ev) {
+    var b = ev.target.closest && ev.target.closest('.hapus-sesi');
+    if (!b) return;
+
+    if (b.getAttribute('data-siap') !== '1') {
+      $$('.hapus-sesi').forEach(balikkanTombol);
+      b.setAttribute('data-siap', '1');
+      b.textContent = 'Yakin?';
+      b.classList.add('tegas');
+      b.__jam = setTimeout(function () { balikkanTombol(b); }, 5000);
+      return;
+    }
+
+    balikkanTombol(b);
+    var id = b.getAttribute('data-id');
+    if (!kunciTerpakai) { pesan('Muat rekapan terlebih dahulu.', 'salah'); return; }
+
+    b.disabled = true;
+    b.textContent = 'Menghapus…';
+    pesan('Menghapus ceklis kelas tersebut…', 'info');
+
+    API.kirim({ aksi: 'hapus', kunci: kunciTerpakai, idSesi: id })
+      .then(function () { muat('Ceklis kelas tersebut sudah dihapus.'); })
+      .catch(function (err) {
+        pesan('Gagal menghapus: ' + esc(err.message), 'salah');
+        b.disabled = false; b.textContent = 'Hapus';
+      });
+  }
+
+  function tutupPanelKosongkan() {
+    $('#panelKosongkan').classList.add('sembunyi');
+    $('#konfirmKosongkan').value = '';
+    $('#tombolKosongkanYa').disabled = true;
+  }
+
+  function kosongkanSemua() {
+    if (!kunciTerpakai) { pesan('Muat rekapan terlebih dahulu.', 'salah'); return; }
+    var t = $('#tombolKosongkanYa');
+    t.disabled = true; t.textContent = 'Menghapus…';
+    pesan('Menghapus seluruh ceklis…', 'info');
+
+    API.kirim({ aksi: 'hapus', kunci: kunciTerpakai, semua: true })
+      .then(function () {
+        tutupPanelKosongkan();
+        muat('Seluruh ceklis sudah dihapus.');
+      })
+      .catch(function (err) {
+        pesan('Gagal menghapus: ' + esc(err.message), 'salah');
+        t.disabled = false;
+      })
+      .then(function () { t.textContent = 'Ya, hapus semuanya'; });
+  }
+
   /* ---------- ekspor ------------------------------------------------------ */
 
   function unduh(nama, isi, tipe) {
@@ -366,8 +438,22 @@
       if (k) { $('#kunciAdmin').value = k; $('#ingatKunci').checked = true; }
     } catch (e) { /* abaikan */ }
 
-    $('#tombolMuat').addEventListener('click', muat);
+    $('#tombolMuat').addEventListener('click', function () { muat(); });
     $('#kunciAdmin').addEventListener('keydown', function (e) { if (e.key === 'Enter') muat(); });
+
+    // menghapus ceklis
+    $('#tabelRekap').addEventListener('click', klikHapusBaris);
+    $('#tombolKosongkan').addEventListener('click', function () {
+      if (!kunciTerpakai) { pesan('Muat rekapan terlebih dahulu.', 'salah'); return; }
+      $('#panelKosongkan').classList.remove('sembunyi');
+      $('#konfirmKosongkan').focus();
+    });
+    $('#tombolKosongkanBatal').addEventListener('click', tutupPanelKosongkan);
+    $('#konfirmKosongkan').addEventListener('input', function () {
+      $('#tombolKosongkanYa').disabled =
+        this.value.trim().replace(/\s+/g, ' ').toUpperCase() !== 'HAPUS SEMUA';
+    });
+    $('#tombolKosongkanYa').addEventListener('click', kosongkanSemua);
     $('#tombolCsv').addEventListener('click', csv);
     $('#tombolJson').addEventListener('click', json);
     $('#tombolCetak').addEventListener('click', function () { window.print(); });

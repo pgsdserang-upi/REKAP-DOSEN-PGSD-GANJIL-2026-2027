@@ -24,7 +24,7 @@
  * Nilai di bawah hanya dipakai bila Script properties belum diisi. Apa pun
  * yang tertulis di sini ikut terbaca publik kalau berkas ini di-commit.
  */
-var KUNCI_ADMIN = 'ganti-kunci-ini-2026';
+var KUNCI_ADMIN = 'pgsd-unggul-2026';
 
 /** Nama tab tempat data disimpan. Dibuat otomatis bila belum ada. */
 var NAMA_SHEET = 'Ceklis';
@@ -191,7 +191,11 @@ function doPost(e) {
     if (!body.sesi && e && e.parameter && e.parameter.payload) {
       try { body = JSON.parse(e.parameter.payload); } catch (abai2) { body = {}; }
     }
-    if ((body.aksi || 'simpan') !== 'simpan') {
+    var aksi = body.aksi || 'simpan';
+
+    if (aksi === 'hapus') return hapus_(body, e);
+
+    if (aksi !== 'simpan') {
       return balas_({ ok: false, pesan: 'Aksi tidak dikenal.' }, e);
     }
 
@@ -259,6 +263,50 @@ function doPost(e) {
   } finally {
     gembok.releaseLock();
   }
+}
+
+/**
+ * Menghapus ceklis. Hanya untuk pengelola - wajib menyertakan kunci admin.
+ *
+ *   { aksi:'hapus', kunci:'...', idSesi:'2267-1' }   satu kelas
+ *   { aksi:'hapus', kunci:'...', semua:true }        seluruh data
+ *
+ * Baris warisan yang ID-nya terlanjur menjadi tanggal ikut dibuang.
+ */
+function hapus_(body, e) {
+  if (str_(body.kunci) !== kunciAdmin_()) {
+    return balas_({ ok: false, pesan: 'Kunci admin salah.' }, e);
+  }
+
+  var semua = body.semua === true || str_(body.semua) === 'true';
+  var idSesi = str_(body.idSesi);
+  if (!semua && !idSesi) {
+    return balas_({ ok: false, pesan: 'Sebutkan idSesi, atau semua:true.' }, e);
+  }
+
+  var sh = sheet_();
+  var n = sh.getLastRow();
+  if (n < 2) return balas_({ ok: true, dihapus: 0, totalBaris: 0 }, e);
+
+  var nilai = sh.getRange(2, 1, n - 1, JUDUL.length).getValues();
+  var sisa = [], dihapus = 0;
+
+  for (var r = 0; r < nilai.length; r++) {
+    var idb = nilai[r][KOL_ID];
+    if (idb instanceof Date) { dihapus++; continue; }   // baris rusak, sekalian dibuang
+    if (!str_(idb)) continue;
+    if (semua || str_(idb) === idSesi) { dihapus++; continue; }
+    sisa.push(nilai[r]);
+  }
+
+  sh.getRange(2, 1, n - 1, JUDUL.length).clearContent();
+  if (sisa.length) {
+    formatKolom_(sh, sisa.length);
+    sh.getRange(2, 1, sisa.length, JUDUL.length).setValues(sisa);
+  }
+
+  return balas_({ ok: true, aksi: 'hapus', dihapus: dihapus,
+                  totalBaris: sisa.length }, e);
 }
 
 // ----------------------------------------------------------------------------
